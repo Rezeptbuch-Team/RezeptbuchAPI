@@ -6,8 +6,8 @@ namespace RezeptbuchAPI.Models
     public class Image
     {
         public string Hash { get; set; }
-        public byte[] ImageData { get; set; } // This should hold the image binary data
-        public string ContentType { get; set; } // To store the image content type (e.g., image/jpeg)
+        public byte[] ImageData { get; set; }
+        public string ContentType { get; set; }
     }
 
 }

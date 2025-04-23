@@ -9,7 +9,6 @@ namespace RezeptbuchAPI.Controllers
     {
         private readonly RecipeBookContext _context;
 
-        // Inject RecipeBookContext into the controller via constructor
         public ImagesController(RecipeBookContext context)
         {
             _context = context;
@@ -25,7 +24,7 @@ namespace RezeptbuchAPI.Controllers
                 return NotFound($"Image not found for recipe with hash '{hash}'. Recipe does not exist or has no image.");
             }
 
-            return File(recipe.Image.ImageData, "image/png"); // Use ImageData here
+            return File(recipe.Image.ImageData, "image/png");
         }
 
         [HttpPost("{hash}")]
@@ -50,19 +49,19 @@ namespace RezeptbuchAPI.Controllers
 
             var image = new Image
             {
-                Hash = Guid.NewGuid().ToString(),  // Generate a new hash for the image
-                ContentType = imageFile.ContentType // Optionally store content type (e.g., image/png)
+                Hash = Guid.NewGuid().ToString(),
+                ContentType = imageFile.ContentType
             };
 
             using (var memoryStream = new MemoryStream())
             {
-                imageFile.CopyTo(memoryStream);  // Copy the file to memory stream
-                image.ImageData = memoryStream.ToArray();  // Store the byte array in ImageData property
+                imageFile.CopyTo(memoryStream);
+                image.ImageData = memoryStream.ToArray();
             }
 
-            // Add image to context
+
             _context.Images.Add(image);
-            recipe.Image = image;  // Link the image to the recipe
+            recipe.Image = image;
 
             _context.Recipes.Update(recipe);
             _context.SaveChanges();
@@ -90,16 +89,15 @@ namespace RezeptbuchAPI.Controllers
                 return BadRequest("Wrong user: You are not authorized to update the image for this recipe.");
             }
 
-            var image = recipe.Image ?? new Image { Hash = Guid.NewGuid().ToString() }; // Create a new Image if it doesn't exist
+            var image = recipe.Image ?? new Image { Hash = Guid.NewGuid().ToString() };
 
             using (var memoryStream = new MemoryStream())
             {
-                imageFile.CopyTo(memoryStream);  // Copy the file to memory stream
-                image.ImageData = memoryStream.ToArray();  // Store the byte array in ImageData property
-                image.ContentType = imageFile.ContentType; // Optionally update content type
+                imageFile.CopyTo(memoryStream);
+                image.ImageData = memoryStream.ToArray();
+                image.ContentType = imageFile.ContentType;
             }
 
-            // If image is new, add it; otherwise, update it
             if (recipe.Image == null)
             {
                 _context.Images.Add(image);
