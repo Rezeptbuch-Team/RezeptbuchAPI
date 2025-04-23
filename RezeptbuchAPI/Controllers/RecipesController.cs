@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using RezeptbuchAPI.Models;
+using System.Xml.Serialization;
+using System.IO;
+using System.Linq;
+using RezeptbuchAPI.Models;
 
 namespace RezeptbuchAPI.Controllers
 {
@@ -7,6 +11,13 @@ namespace RezeptbuchAPI.Controllers
     [Route("recipes")]
     public class RecipesController : ControllerBase
     {
+        private readonly RecipeBookContext _context;
+
+        public RecipesController(RecipeBookContext context)
+        {
+            _context = context;
+        }
+
         [HttpGet]
         public IActionResult GetRecipes(
             [FromQuery] int offset = 0,
@@ -41,7 +52,6 @@ namespace RezeptbuchAPI.Controllers
 
             return Ok(new { recipes });
         }
-
 
         [HttpPost]
         public IActionResult UploadRecipe(
@@ -80,23 +90,6 @@ namespace RezeptbuchAPI.Controllers
             }
         }
 
-        private Recipe? DeserializeXmlToRecipe(string xmlContent)
-        {
-            try
-            {
-                var serializer = new XmlSerializer(typeof(Recipe));
-                using (var reader = new StringReader(xmlContent))
-                {
-                    return (Recipe?)serializer.Deserialize(reader);
-                }
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
-
         [HttpGet("{hash}")]
         public IActionResult GetRecipeByHash(string hash)
         {
@@ -109,7 +102,6 @@ namespace RezeptbuchAPI.Controllers
 
             return Ok(recipe);
         }
-
 
         [HttpPut("{hash}")]
         public IActionResult UpdateRecipe(string hash, [FromHeader] string uuid, [FromBody] string xmlContent)
@@ -158,6 +150,7 @@ namespace RezeptbuchAPI.Controllers
             }
         }
 
+        // ✅ NUR EINMAL definieren
         private Recipe? DeserializeXmlToRecipe(string xmlContent)
         {
             try
@@ -173,6 +166,5 @@ namespace RezeptbuchAPI.Controllers
                 return null;
             }
         }
-
     }
 }

@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using RezeptbuchAPI.Models;
+
 
 namespace RezeptbuchAPI.Controllers
 {
@@ -6,6 +8,14 @@ namespace RezeptbuchAPI.Controllers
     [Route("categories")]
     public class CategoriesController : ControllerBase
     {
+        private readonly RecipeBookContext _context;
+
+        // Inject RecipeBookContext into the controller via constructor
+        public CategoriesController(RecipeBookContext context)
+        {
+            _context = context;
+        }
+
         [HttpGet]
         public IActionResult GetCategories([FromQuery] int offset = 0, [FromQuery] int count = 10)
         {
