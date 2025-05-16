@@ -1,0 +1,16 @@
+bin/
+obj/
+.vscode/
+.git/
+.vs/
+.github/
+TestResults/
+*.user
+*.suo
+*.db
+*.sqlite
+*.pdb
+*.log
+*.md
+*.tmp
+*.bak
