@@ -5,6 +5,7 @@ namespace RezeptbuchAPI.Models
 {
     public class Recipe
     {
+        [Key]
         public string Hash { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
