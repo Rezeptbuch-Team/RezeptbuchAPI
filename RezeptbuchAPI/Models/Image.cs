@@ -5,6 +5,7 @@ namespace RezeptbuchAPI.Models
 {
     public class Image
     {
+        [Key]
         public string Hash { get; set; }
         public byte[] ImageData { get; set; }
         public string ContentType { get; set; }
