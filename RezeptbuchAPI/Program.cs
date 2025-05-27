@@ -3,7 +3,12 @@ using RezeptbuchAPI.Models;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+    {
+        options.OutputFormatters.Insert(0, new Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter());
+        options.OutputFormatters.Insert(0, new Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter());
+    })
+    .AddXmlSerializerFormatters();
 builder.Services.AddDbContext<RecipeBookContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 

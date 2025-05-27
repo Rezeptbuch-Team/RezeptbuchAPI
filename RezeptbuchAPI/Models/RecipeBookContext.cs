@@ -11,5 +11,7 @@ namespace RezeptbuchAPI.Models
         public DbSet<Recipe> Recipes { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Image> Images { get; set; }
+        public DbSet<Instruction> Instructions { get; set; }
+        public DbSet<Ingredient> Ingredients { get; set; }
     }
 }

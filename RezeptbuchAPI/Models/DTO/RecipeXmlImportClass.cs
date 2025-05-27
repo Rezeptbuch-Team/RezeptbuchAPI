@@ -1,12 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
 using System.Xml.Serialization;
 
-namespace RezeptbuchAPI.Models
+namespace RezeptbuchAPI.Models.DTO
 {
     [XmlRoot("recipe")]
-    public class Recipe
+    public class RecipeXmlImport
     {
-        [Key]
         [XmlElement("hash")]
         public string Hash { get; set; }
 
@@ -31,12 +30,6 @@ namespace RezeptbuchAPI.Models
 
         [XmlArray("instructions")]
         [XmlArrayItem("instruction")]
-        public List<Instruction> Instructions { get; set; } = new();
-
-        [XmlIgnore]
-        public string OwnerUuid { get; set; }
-
-        [XmlIgnore]
-        public Image Image { get; set; }
+        public List<InstructionXmlDto> Instructions { get; set; } = new();
     }
 }

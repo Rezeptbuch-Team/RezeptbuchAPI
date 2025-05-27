@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RezeptbuchAPI.Models;
@@ -11,9 +12,11 @@ using RezeptbuchAPI.Models;
 namespace RezeptbuchAPI.Migrations
 {
     [DbContext(typeof(RecipeBookContext))]
-    partial class RecipeBookContextModelSnapshot : ModelSnapshot
+    [Migration("20250527022531_AddInstructionsAndIngredients")]
+    partial class AddInstructionsAndIngredients
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -65,8 +68,9 @@ namespace RezeptbuchAPI.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Amount")
-                        .HasColumnType("integer");
+                    b.Property<string>("Amount")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("InstructionId")
                         .HasColumnType("integer");
@@ -121,8 +125,9 @@ namespace RezeptbuchAPI.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
-                    b.Property<int>("CookingTime")
-                        .HasColumnType("integer");
+                    b.Property<string>("CookingTime")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Description")
                         .IsRequired()
