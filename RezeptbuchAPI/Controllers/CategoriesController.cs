@@ -17,19 +17,22 @@ namespace RezeptbuchAPI.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetCategories([FromQuery] int offset = 0, [FromQuery] int count = 10)
+        public IActionResult GetCategories([FromQuery] int offset = 0, [FromQuery] int? count = null)
         {
+            if (count == null)
+                return BadRequest("Parameter “count” is required.");
+            if (count > 50)
+                return BadRequest("Parameter “count” may be a maximum of 50.");
+
             var categories = _context.Categories
                 .OrderBy(c => c.Name)
                 .Skip(offset)
-                .Take(count)
+                .Take(count.Value)
                 .Select(c => c.Name)
                 .ToList();
 
             if (!categories.Any())
-            {
                 return BadRequest("No categories found.");
-            }
 
             return Ok(new { categories });
         }

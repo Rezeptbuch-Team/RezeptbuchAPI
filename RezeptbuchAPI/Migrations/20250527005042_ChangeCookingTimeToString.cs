@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace RezeptbuchAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class ChangeCookingTimeToString : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -45,7 +45,7 @@ namespace RezeptbuchAPI.Migrations
                     Hash = table.Column<string>(type: "text", nullable: false),
                     Title = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
-                    CookingTime = table.Column<int>(type: "integer", nullable: false),
+                    CookingTime = table.Column<string>(type: "text", nullable: false),
                     OwnerUuid = table.Column<string>(type: "text", nullable: false),
                     ImageHash = table.Column<string>(type: "text", nullable: true),
                     Categories = table.Column<List<string>>(type: "text[]", nullable: false)

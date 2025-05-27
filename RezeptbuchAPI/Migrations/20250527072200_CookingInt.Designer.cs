@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RezeptbuchAPI.Models;
@@ -11,9 +12,11 @@ using RezeptbuchAPI.Models;
 namespace RezeptbuchAPI.Migrations
 {
     [DbContext(typeof(RecipeBookContext))]
-    partial class RecipeBookContextModelSnapshot : ModelSnapshot
+    [Migration("20250527072200_CookingInt")]
+    partial class CookingInt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -12,8 +12,8 @@ using RezeptbuchAPI.Models;
 namespace RezeptbuchAPI.Migrations
 {
     [DbContext(typeof(RecipeBookContext))]
-    [Migration("20250516110530_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250527031154_AddInstructionsAndIngredients2")]
+    partial class AddInstructionsAndIngredients2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -60,6 +60,61 @@ namespace RezeptbuchAPI.Migrations
                     b.ToTable("Images");
                 });
 
+            modelBuilder.Entity("RezeptbuchAPI.Models.Ingredient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Amount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("InstructionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstructionId");
+
+                    b.ToTable("Ingredients");
+                });
+
+            modelBuilder.Entity("RezeptbuchAPI.Models.Instruction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("RecipeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipeHash");
+
+                    b.ToTable("Instructions");
+                });
+
             modelBuilder.Entity("RezeptbuchAPI.Models.Recipe", b =>
                 {
                     b.Property<string>("Hash")
@@ -79,9 +134,16 @@ namespace RezeptbuchAPI.Migrations
                     b.Property<string>("ImageHash")
                         .HasColumnType("text");
 
+                    b.Property<string>("ImageName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("OwnerUuid")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("Servings")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -94,6 +156,28 @@ namespace RezeptbuchAPI.Migrations
                     b.ToTable("Recipes");
                 });
 
+            modelBuilder.Entity("RezeptbuchAPI.Models.Ingredient", b =>
+                {
+                    b.HasOne("RezeptbuchAPI.Models.Instruction", "Instruction")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("InstructionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instruction");
+                });
+
+            modelBuilder.Entity("RezeptbuchAPI.Models.Instruction", b =>
+                {
+                    b.HasOne("RezeptbuchAPI.Models.Recipe", "Recipe")
+                        .WithMany("Instructions")
+                        .HasForeignKey("RecipeHash")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipe");
+                });
+
             modelBuilder.Entity("RezeptbuchAPI.Models.Recipe", b =>
                 {
                     b.HasOne("RezeptbuchAPI.Models.Image", "Image")
@@ -101,6 +185,16 @@ namespace RezeptbuchAPI.Migrations
                         .HasForeignKey("ImageHash");
 
                     b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("RezeptbuchAPI.Models.Instruction", b =>
+                {
+                    b.Navigation("Ingredients");
+                });
+
+            modelBuilder.Entity("RezeptbuchAPI.Models.Recipe", b =>
+                {
+                    b.Navigation("Instructions");
                 });
 #pragma warning restore 612, 618
         }

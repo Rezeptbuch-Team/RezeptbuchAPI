@@ -1,6 +1,7 @@
-@RezeptbuchAPI_HostAddress = http://localhost:5112
+@RezeptbuchAPI_HostAddress = https://localhost:7042
 
-GET {{RezeptbuchAPI_HostAddress}}/weatherforecast/
-Accept: application/json
+GET {{RezeptbuchAPI_HostAddress}}/categories?offset=0&count=1
+Accept: */*
 
 ###
+
