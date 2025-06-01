@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RezeptbuchAPI.Models;
 using Microsoft.OpenApi.Models;
+using AutoMapper;
+using RezeptbuchAPI.Models.DTO;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options =>
@@ -21,6 +23,8 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+builder.Services.AddAutoMapper(typeof(RecipeMappingProfile));
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

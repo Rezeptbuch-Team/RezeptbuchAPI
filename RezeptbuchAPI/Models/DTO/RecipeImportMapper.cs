@@ -5,6 +5,7 @@ namespace RezeptbuchAPI.Models.DTO
 {
     public static class RecipeImportMapper
     {
+        // Punkt 1: Kategorien-Mapping entfernt!
         public static Recipe MapToRecipe(RecipeXmlImport importRecipe, string ownerUuid)
         {
             var recipe = new Recipe
@@ -15,9 +16,9 @@ namespace RezeptbuchAPI.Models.DTO
                 Description = importRecipe.Description,
                 Servings = importRecipe.Servings,
                 CookingTime = importRecipe.CookingTime,
-                Categories = importRecipe.Categories ?? new List<string>(),
                 OwnerUuid = ownerUuid,
-                Instructions = new List<Instruction>()
+                Instructions = new List<Instruction>(),
+                Categories = new List<Category>() // Wird im Controller gesetzt!
             };
 
             if (importRecipe.Instructions != null)

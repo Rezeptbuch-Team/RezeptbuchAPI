@@ -1,42 +1,41 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Xml.Serialization;
+using RezeptbuchAPI.Models;
 
-namespace RezeptbuchAPI.Models
+[XmlRoot("recipe")]
+public class Recipe
 {
-    [XmlRoot("recipe")]
-    public class Recipe
-    {
-        [Key]
-        [XmlElement("hash")]
-        public string Hash { get; set; }
+    [Key]
+    [XmlElement("hash")]
+    public string Hash { get; set; } = string.Empty;
 
-        [XmlElement("title")]
-        public string Title { get; set; }
+    [XmlElement("title")]
+    public string Title { get; set; } = string.Empty;
 
-        [XmlElement("imageName")]
-        public string ImageName { get; set; }
+    [XmlElement("imageName")]
+    public string ImageName { get; set; } = string.Empty;
 
-        [XmlElement("description")]
-        public string Description { get; set; }
+    [XmlElement("description")]
+    public string Description { get; set; } = string.Empty;
 
-        [XmlElement("servings")]
-        public int? Servings { get; set; }
+    [XmlElement("servings")]
+    public int? Servings { get; set; }
 
-        [XmlElement("cookingTime")]
-        public int CookingTime { get; set; }
+    [XmlElement("cookingTime")]
+    public int CookingTime { get; set; }
 
-        [XmlArray("categories")]
-        [XmlArrayItem("category")]
-        public List<string> Categories { get; set; } = new();
+    [XmlArray("categories")]
+    [XmlArrayItem("category")]
+    public List<Category> Categories { get; set; } = new();
 
-        [XmlArray("instructions")]
-        [XmlArrayItem("instruction")]
-        public List<Instruction> Instructions { get; set; } = new();
+    [XmlArray("instructions")]
+    [XmlArrayItem("instruction")]
+    public List<Instruction> Instructions { get; set; } = new();
 
-        [XmlIgnore]
-        public string OwnerUuid { get; set; }
+    [XmlIgnore]
+    public string OwnerUuid { get; set; } = string.Empty;
 
-        [XmlIgnore]
-        public Image Image { get; set; }
-    }
+    [XmlIgnore]
+    public Image? Image { get; set; }
 }
