@@ -21,6 +21,8 @@ namespace RezeptbuchAPI.Controllers
         {
             if (count == null)
                 return BadRequest("Parameter “count” is required.");
+            if (count <= 0)
+                return BadRequest("Parameter “count” must be greater than 0.");
             if (count > 50)
                 return BadRequest("Parameter “count” may be a maximum of 50.");
 
@@ -32,7 +34,7 @@ namespace RezeptbuchAPI.Controllers
                 .ToList();
 
             if (!categories.Any())
-                return BadRequest("No categories found.");
+                 return BadRequest("No categories found.");
 
             return Ok(new { categories });
         }

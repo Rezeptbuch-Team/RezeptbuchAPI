@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RezeptbuchAPI.Models;
 using RezeptbuchAPI.Models.DTO;
+using AutoMapper;
 
 namespace RezeptbuchAPI.Controllers
 {
@@ -16,10 +17,84 @@ namespace RezeptbuchAPI.Controllers
     public class RecipesController : ControllerBase
     {
         private readonly RecipeBookContext _context;
+        private readonly IMapper _mapper;
 
-        public RecipesController(RecipeBookContext context)
+        public RecipesController(RecipeBookContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
+        }
+
+        // --- Hilfsmethoden für Kategorie-Handling und Validierung ---
+
+        private void EnsureCategoriesExist(List<string> categories)
+        {
+            var trimmed = categories.Select(c => c.Trim()).ToList();
+            var existingCategories = _context.Categories
+                .Select(c => c.Name)
+                .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+
+            var newCategories = trimmed
+                .Where(cat => !existingCategories.Contains(cat))
+                .Distinct(System.StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var cat in newCategories)
+            {
+                _context.Categories.Add(new Category { Name = cat });
+            }
+            if (newCategories.Count > 0)
+                _context.SaveChanges();
+        }
+
+        private List<Category> GetCategoriesFromDb(List<string> categories)
+        {
+            var importCategorySet = categories
+                .Select(c => c.Trim())
+                .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+
+            return _context.Categories
+                .Where(c => importCategorySet.Contains(c.Name))
+                .ToList();
+        }
+
+        private IActionResult ValidateCount(int? count)
+        {
+            if (count == null)
+                return BadRequest("Parameter 'count' ist erforderlich.");
+            if (count <= 0)
+                return BadRequest("Parameter 'count' muss größer als 0 sein.");
+            if (count > 25)
+                return BadRequest("Parameter 'count' darf maximal 25 sein.");
+            return null!;
+        }
+
+        private IActionResult ValidateOrderBy(string order_by)
+        {
+            if (order_by != "title" && order_by != "cooking_time")
+                return BadRequest("Invalid value for 'order_by'. Must be 'title' or 'cooking_time'.");
+            return null!;
+        }
+
+        private IActionResult ValidateImportRecipe(RecipeXmlImport importRecipe)
+        {
+            if (importRecipe == null)
+                return BadRequest("No XML content provided.");
+            if (string.IsNullOrWhiteSpace(importRecipe.Title) || importRecipe.CookingTime <= 0)
+                return BadRequest("Validation error: Title or cooking time is missing or invalid.");
+            return null!;
+        }
+
+        private object RecipeToResult(Recipe recipe)
+        {
+            return new
+            {
+                hash = recipe.Hash,
+                title = recipe.Title,
+                description = recipe.Description,
+                categories = recipe.Categories.Select(c => c.Name).ToList(),
+                cooking_time = recipe.CookingTime
+            };
         }
 
         [HttpGet]
@@ -30,24 +105,22 @@ namespace RezeptbuchAPI.Controllers
             [FromQuery] string order = "asc",
             [FromQuery] List<string>? categories = null)
         {
-            if (count == null)
-                return BadRequest("Parameter 'count' ist erforderlich.");
-            if (count > 25)
-                return BadRequest("Parameter 'count' darf maximal 25 sein.");
+            var countValidation = ValidateCount(count);
+            if (countValidation != null) return countValidation;
 
-            if (order_by != "title" && order_by != "cooking_time")
-            {
-                return BadRequest("Invalid value for 'order_by'. Must be 'title' or 'cooking_time'.");
-            }
+            var orderByValidation = ValidateOrderBy(order_by);
+            if (orderByValidation != null) return orderByValidation;
 
             var query = _context.Recipes
+                .Include(r => r.Categories)
                 .Include(r => r.Instructions)
                 .ThenInclude(i => i.Ingredients)
                 .AsQueryable();
 
             if (categories != null && categories.Count > 0)
             {
-                query = query.Where(r => r.Categories.Any(c => categories.Contains(c)));
+                var categorySet = categories.ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+                query = query.Where(r => r.Categories.Any(cat => categorySet.Contains(cat.Name)));
             }
 
             query = order_by switch
@@ -59,19 +132,9 @@ namespace RezeptbuchAPI.Controllers
 
             var recipes = query
                 .Skip(offset)
-                .Take(Math.Min(count.Value, 25))
+                .Take(Math.Min(count ?? 0, 25))
                 .ToList()
-                .Select(r => new RecipeDto
-                {
-                    Hash = r.Hash,
-                    Title = r.Title,
-                    Description = r.Description,
-                    Categories = r.Categories,
-                    CookingTime = r.CookingTime,
-                    ImageName = r.ImageName,
-                    Servings = r.Servings,
-                    Instructions = r.Instructions?.Select(InstructionDto.FromEntity).ToList() ?? new()
-                })
+                .Select(RecipeToResult)
                 .ToList();
 
             return Ok(new { recipes });
@@ -80,69 +143,124 @@ namespace RezeptbuchAPI.Controllers
         [HttpPost]
         [Consumes("application/xml")]
         public IActionResult UploadRecipe(
-    [FromHeader] string uuid,
-    [FromBody] RecipeXmlImport importRecipe)
+            [FromHeader] string uuid,
+            [FromBody] RecipeXmlImport importRecipe)
         {
-            if (importRecipe == null)
-                return BadRequest("No XML content provided.");
-
-            if (string.IsNullOrWhiteSpace(importRecipe.Title) || importRecipe.CookingTime <= 0)
-                return BadRequest("Validation error: Title or cooking time is missing or invalid.");
-
-            // Kategorien prüfen und ggf. anlegen
-            if (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
-            {
-                var existingCategories = _context.Categories
-                    .Select(c => c.Name)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                var newCategories = importRecipe.Categories
-                    .Where(cat => !existingCategories.Contains(cat))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                foreach (var cat in newCategories)
-                {
-                    _context.Categories.Add(new Category { Name = cat });
-                }
-                if (newCategories.Count > 0)
-                    _context.SaveChanges();
-            }
-
-            // Mapping ausgelagert
-            var recipe = RecipeImportMapper.MapToRecipe(importRecipe, uuid);
+            var validation = ValidateImportRecipe(importRecipe);
+            if (validation != null) return validation;
 
             // Prüfe auf doppelten Hash
-            if (_context.Recipes.Any(r => r.Hash == recipe.Hash))
+            if (!string.IsNullOrWhiteSpace(importRecipe.Hash) && _context.Recipes.Any(r => r.Hash == importRecipe.Hash))
             {
-                return Conflict($"A recipe with the hash '{recipe.Hash}' already exists.");
+                return Conflict($"A recipe with the hash '{importRecipe.Hash}' already exists.");
             }
 
-            // Instructions in den Kontext aufnehmen
+            if (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
+                EnsureCategoriesExist(importRecipe.Categories);
+
+            var recipe = _mapper.Map<Recipe>(importRecipe);
+            recipe.OwnerUuid = uuid;
+
+            // Setze die Rückreferenz für jede Instruction (wichtig für EF Core)
             if (recipe.Instructions != null)
             {
                 foreach (var instruction in recipe.Instructions)
                 {
-                    _context.Instructions.Add(instruction);
+                    instruction.Recipe = recipe;
+                    if (instruction.Ingredients != null)
+                    {
+                        foreach (var ingredient in instruction.Ingredients)
+                        {
+                            ingredient.Instruction = instruction;
+                        }
+                    }
                 }
             }
 
             _context.Recipes.Add(recipe);
             _context.SaveChanges();
 
-            var dto = new RecipeDto
-            {
-                Hash = recipe.Hash,
-                Title = recipe.Title,
-                Description = recipe.Description,
-                Categories = recipe.Categories,
-                CookingTime = recipe.CookingTime,
-                ImageName = recipe.ImageName,
-                Servings = recipe.Servings,
-                Instructions = recipe.Instructions?.Select(InstructionDto.FromEntity).ToList() ?? new()
-            };
+            recipe.Categories = (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
+                ? GetCategoriesFromDb(importRecipe.Categories)
+                : new List<Category>();
 
-            return Ok(dto);
+            _context.Recipes.Update(recipe);
+            _context.SaveChanges();
+
+            return Ok(RecipeToResult(recipe));
+        }
+
+        [HttpPut("{hash}")]
+        [Consumes("application/xml")]
+        public IActionResult UpdateRecipe(string hash, [FromHeader] string uuid, [FromBody] RecipeXmlImport importRecipe)
+        {
+            var validation = ValidateImportRecipe(importRecipe);
+            if (validation != null) return validation;
+
+            var existingRecipe = _context.Recipes
+                .Include(r => r.Categories)
+                .Include(r => r.Instructions)
+                .ThenInclude(i => i.Ingredients)
+                .FirstOrDefault(r => r.Hash == hash);
+
+            if (existingRecipe == null)
+                return BadRequest($"No recipe found with the specified hash '{hash}'.");
+
+            if (existingRecipe.OwnerUuid != uuid)
+                return BadRequest("Wrong user: You are not authorized to update this recipe.");
+
+            if (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
+                EnsureCategoriesExist(importRecipe.Categories);
+
+            existingRecipe.Title = importRecipe.Title;
+            existingRecipe.Description = importRecipe.Description;
+            existingRecipe.CookingTime = importRecipe.CookingTime;
+            existingRecipe.ImageName = importRecipe.ImageName;
+            existingRecipe.Servings = importRecipe.Servings;
+
+            existingRecipe.Categories = (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
+                ? GetCategoriesFromDb(importRecipe.Categories)
+                : new List<Category>();
+
+            // --- Instructions & Ingredients ersetzen ---
+            if (importRecipe.Instructions != null)
+            {
+                var oldInstructions = existingRecipe.Instructions?.ToList() ?? new List<Instruction>();
+                foreach (var instr in oldInstructions)
+                {
+                    if (instr.Ingredients != null)
+                        _context.Ingredients.RemoveRange(instr.Ingredients);
+                    _context.Instructions.Remove(instr);
+                }
+                existingRecipe.Instructions.Clear();
+                _context.SaveChanges();
+
+                var newInstructions = _mapper.Map<List<Instruction>>(importRecipe.Instructions);
+                foreach (var instruction in newInstructions)
+                {
+                    instruction.Recipe = existingRecipe;
+                    if (instruction.Ingredients != null)
+                    {
+                        foreach (var ingredient in instruction.Ingredients)
+                        {
+                            ingredient.Instruction = instruction;
+                        }
+                    }
+                    existingRecipe.Instructions.Add(instruction);
+                }
+                _context.SaveChanges();
+            }
+
+            _context.Recipes.Update(existingRecipe);
+            _context.SaveChanges();
+
+            _context.Entry(existingRecipe)
+                .Collection(r => r.Instructions)
+                .Query()
+                .Include(i => i.Ingredients)
+                .Load();
+
+            return Ok(RecipeToResult(existingRecipe));
         }
 
         [HttpGet("{hash}")]
@@ -152,6 +270,7 @@ namespace RezeptbuchAPI.Controllers
             var recipe = _context.Recipes
                 .Include(r => r.Instructions)
                 .ThenInclude(i => i.Ingredients)
+                .Include(r => r.Categories)
                 .FirstOrDefault(r => r.Hash == hash);
             if (recipe == null)
                 return NotFound($"Recipe with hash '{hash}' not found.");
@@ -175,7 +294,7 @@ namespace RezeptbuchAPI.Controllers
                 Description = recipe.Description,
                 Servings = recipe.Servings,
                 CookingTime = recipe.CookingTime,
-                Categories = recipe.Categories,
+                Categories = recipe.Categories?.Select(c => c.Name).ToList() ?? new List<string>(),
                 Instructions = xmlInstructions
             };
 
@@ -195,118 +314,6 @@ namespace RezeptbuchAPI.Controllers
 
             return Content(xml, "application/xml");
         }
-
-        [HttpPut("{hash}")]
-        [Consumes("application/xml")]
-        public IActionResult UpdateRecipe(string hash, [FromHeader] string uuid, [FromBody] RecipeXmlImport importRecipe)
-        {
-            if (importRecipe == null)
-                return BadRequest("No XML content provided.");
-
-            if (string.IsNullOrWhiteSpace(importRecipe.Title) || importRecipe.CookingTime <= 0)
-                return BadRequest("Validation error: Title or cooking time is missing or invalid.");
-
-            var existingRecipe = _context.Recipes
-                .Include(r => r.Instructions)
-                .ThenInclude(i => i.Ingredients)
-                .FirstOrDefault(r => r.Hash == hash);
-
-            if (existingRecipe == null)
-                return BadRequest($"No recipe found with the specified hash '{hash}'.");
-
-            if (existingRecipe.OwnerUuid != uuid)
-                return BadRequest("Wrong user: You are not authorized to update this recipe.");
-
-            // Kategorien prüfen und ggf. anlegen (wie beim POST)
-            if (importRecipe.Categories != null && importRecipe.Categories.Count > 0)
-            {
-                var existingCategories = _context.Categories
-                    .Select(c => c.Name)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                var newCategories = importRecipe.Categories
-                    .Where(cat => !existingCategories.Contains(cat))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                foreach (var cat in newCategories)
-                {
-                    _context.Categories.Add(new Category { Name = cat });
-                }
-                if (newCategories.Count > 0)
-                    _context.SaveChanges();
-            }
-
-            // Felder aktualisieren
-            existingRecipe.Title = importRecipe.Title;
-            existingRecipe.Description = importRecipe.Description;
-            existingRecipe.CookingTime = importRecipe.CookingTime;
-            existingRecipe.Categories = importRecipe.Categories ?? new List<string>();
-            existingRecipe.ImageName = importRecipe.ImageName;
-            existingRecipe.Servings = importRecipe.Servings;
-
-            // --- Instructions & Ingredients ersetzen ---
-            if (importRecipe.Instructions != null)
-            {
-                // 1. Alte Instructions inkl. Ingredients entfernen
-                var oldInstructions = _context.Instructions
-                    .Where(i => i.RecipeId == existingRecipe.GetHashCode()) // FALSCH: RecipeId ist int, Hash ist string!
-                    .Include(i => i.Ingredients)
-                    .ToList();
-
-                // Korrektur: Wir müssen alle Instructions des Rezepts anhand der Navigation löschen!
-                oldInstructions = existingRecipe.Instructions?.ToList() ?? new List<Instruction>();
-
-                foreach (var instr in oldInstructions)
-                {
-                    if (instr.Ingredients != null)
-                        _context.Ingredients.RemoveRange(instr.Ingredients);
-
-                    _context.Instructions.Remove(instr);
-                }
-                _context.SaveChanges();
-
-                // 2. Neue Instructions aus dem Import anlegen
-                foreach (var instrDto in importRecipe.Instructions)
-                {
-                    var instruction = Instruction.FromXmlDto(instrDto);
-                    instruction.Recipe = existingRecipe;
-                    // RecipeId wird von EF gesetzt, Recipe ist gesetzt
-                    if (instruction.Ingredients != null)
-                    {
-                        foreach (var ingredient in instruction.Ingredients)
-                        {
-                            ingredient.Instruction = instruction;
-                        }
-                    }
-                    _context.Instructions.Add(instruction);
-                }
-                _context.SaveChanges();
-            }
-
-            _context.Recipes.Update(existingRecipe);
-            _context.SaveChanges();
-
-            // Navigation neu laden, damit Instructions im DTO aktuell sind
-            _context.Entry(existingRecipe)
-                .Collection(r => r.Instructions)
-                .Query()
-                .Include(i => i.Ingredients)
-                .Load();
-
-            var dto = new RecipeDto
-            {
-                Hash = existingRecipe.Hash,
-                Title = existingRecipe.Title,
-                Description = existingRecipe.Description,
-                Categories = existingRecipe.Categories,
-                CookingTime = existingRecipe.CookingTime,
-                ImageName = existingRecipe.ImageName,
-                Servings = existingRecipe.Servings,
-                Instructions = existingRecipe.Instructions?.Select(InstructionDto.FromEntity).ToList() ?? new()
-            };
-            return Ok(dto);
-        }
     }
 
     // Hilfs-DTO für XML-Export (damit Instructions als List<InstructionXmlDto> serialisiert werden)
@@ -314,16 +321,16 @@ namespace RezeptbuchAPI.Controllers
     public class RecipeXmlExport
     {
         [XmlElement("hash")]
-        public string Hash { get; set; }
+        public string Hash { get; set; } = string.Empty;
 
         [XmlElement("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         [XmlElement("imageName")]
-        public string ImageName { get; set; }
+        public string ImageName { get; set; } = string.Empty;
 
         [XmlElement("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         [XmlElement("servings")]
         public int? Servings { get; set; }
