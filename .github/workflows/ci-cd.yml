@@ -27,12 +27,25 @@ jobs:
 
       - name: Run Tests
         run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage"
-      
+
+      # ReportGenerator installieren (als .NET Global Tool)
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Coverage-Bericht generieren (HTML)
+      - name: Generate HTML coverage report
+        run: |
+          reportgenerator \
+            -reports:**/TestResults/*/coverage.cobertura.xml \
+            -targetdir:coveragereport \
+            -reporttypes:Html
+
+      # Coverage-Report als Artefakt hochladen
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: code-coverage-report
-          path: '**/TestResults/**/*.xml'
+          name: html-code-coverage-report
+          path: coveragereport
 
   deploy:
     needs: build-and-test
